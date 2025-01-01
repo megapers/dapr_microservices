@@ -26,11 +26,16 @@ services:
   ################################################
   platformservice:
     container_name: "platformservice"
+    environment:
+      DEPLOYMENT_MODE: "DOCKER"
     build:
       context: ./PlatformService
       dockerfile: Dockerfile
     ports:
       - "8070:8080" # Host 8070 -> Container 8080
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   ################################################
   #  PLATFORM SERVICE - DAPR SIDECAR
@@ -38,6 +43,8 @@ services:
   platformservice-dapr:
     image: "daprio/daprd:latest"
     container_name: "platformservice-dapr"
+    environment:
+      DEPLOYMENT_MODE: "DOCKER"
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -63,6 +70,11 @@ services:
   ################################################
   commandsservice:
     container_name: "commandsservice"
+    environment:
+      DEPLOYMENT_MODE: "DOCKER"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     build:
       context: ./CommandsService
       dockerfile: Dockerfile
@@ -75,6 +87,8 @@ services:
   commandsservice-dapr:
     image: "daprio/daprd:latest"
     container_name: "commandsservice-dapr"
+    environment:
+      DEPLOYMENT_MODE: "DOCKER"
     depends_on:
       rabbitmq:
         condition: service_healthy

@@ -1,75 +1,109 @@
 # start-all.ps1
 
-# Function to wait for a service to be ready by attempting a TCP connection
-function Wait-ServiceReady {
+# Function to check if a TCP port is open
+function Test-Port {
     param(
-        [string]$hostname,
-        [int]$port,
-        [int]$timeoutSeconds = 60
+        [string]$Hostname,
+        [int]$Port,
+        [int]$Timeout = 5
     )
-
-    Write-Host "Waiting for ${hostname}:$port to be ready..."
-    $startTime = Get-Date
-    while ((Get-Date) -lt $startTime.AddSeconds($timeoutSeconds)) {
-        try {
-            $tcpClient = New-Object System.Net.Sockets.TcpClient
-            $tcpClient.Connect($hostname, $port)
-            if ($tcpClient.Connected) {
-                $tcpClient.Close()
-                Write-Host "${hostname}:$port is ready."
-                return $true
-            }
+    try {
+        $connection = New-Object System.Net.Sockets.TcpClient
+        $result = $connection.BeginConnect($Hostname, $Port, $null, $null)
+        $wait = $result.AsyncWaitHandle.WaitOne($Timeout * 1000, $false)
+        if (!$wait) {
+            $connection.Close()
+            return $false
         }
-        catch {
-            # Do nothing, just wait
-        }
-        Start-Sleep -Seconds 2
+        $connection.EndConnect($result)
+        $connection.Close()
+        return $true
     }
-
-    Write-Error "${hostname}:$port did not become ready within $timeoutSeconds seconds."
-    return $false
-}
-
-# Function to start an existing PowerShell script
-function Start-ExistingScript {
-    param(
-        [string]$scriptPath
-    )
-
-    if (Test-Path $scriptPath) {
-        Write-Host "Starting script: $scriptPath"
-        # Start the script in a new PowerShell process
-        $process = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" -PassThru
-        return $process
-    }
-    else {
-        Write-Error "Script not found: $scriptPath"
-        return $null
+    catch {
+        return $false
     }
 }
 
-# Define path to docker-components.yaml
-$dockerComposeFile = "docker-components.yaml"
+# Function to start a script asynchronously with environment variables and logging
+function Start-ScriptAsync {
+    param(
+        [string]$ScriptPath,
+        [string]$WorkingDirectory,
+        [hashtable]$EnvironmentVars,
+        [string]$LogFilePath
+    )
+    Start-Process -FilePath "pwsh.exe" `
+                  -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`"" `
+                  -WorkingDirectory $WorkingDirectory `
+                  -WindowStyle Hidden `
+                  -Environment $EnvironmentVars `
+                  -RedirectStandardOutput $LogFilePath `
+                  -RedirectStandardError "$($LogFilePath)_error.log"
+}
+
+# Set deployment mode in parent process
+$env:DEPLOYMENT_MODE = "SELFHOSTED"
 
 # Start Docker Compose services
-Write-Host "Starting Docker Compose services..."
-docker-compose -f $dockerComposeFile up -d
-
-# Wait for RabbitMQ to be ready
-if (-not (Wait-ServiceReady -hostname "localhost" -port 5672 -timeoutSeconds 60)) {
-    Write-Error "RabbitMQ is not ready. Exiting."
+try {
+    Write-Host "Starting Docker Compose services..."
+    docker-compose -f docker-components.yaml up -d
+}
+catch {
+    Write-Error "Failed to start Docker Compose services: $_"
     exit 1
 }
 
+# Wait for RabbitMQ to be ready
+Write-Host "Waiting for RabbitMQ to be ready..."
+while (-not (Test-Port -Hostname "localhost" -Port 5672 -Timeout 2)) {
+    Write-Host "RabbitMQ not ready yet. Waiting..."
+    Start-Sleep -Seconds 2
+}
+Write-Host "RabbitMQ is ready."
+
 # Define paths to existing selfhosted scripts
-$platformServiceScript = ".\PlatformService\start-selfhosted.ps1"
-$commandsServiceScript = ".\CommandsService\start-selfhosted.ps1"
+$projectRoot = $PWD
+$platformServiceScript = Join-Path -Path $projectRoot -ChildPath "PlatformService\start-selfhosted.ps1"
+$commandsServiceScript = Join-Path -Path $projectRoot -ChildPath "CommandsService\start-selfhosted.ps1"
 
-# Start PlatformService
-$platformServiceProcess = Start-ExistingScript -scriptPath $platformServiceScript
+# Define environment variables (already set DEPLOYMENT_MODE)
+$envVars = @{
+    DEPLOYMENT_MODE = "SELFHOSTED"
+}
 
-# Start CommandsService
-$commandsServiceProcess = Start-ExistingScript -scriptPath $commandsServiceScript
+# Define log file paths
+$platformServiceLog = Join-Path -Path $projectRoot -ChildPath "PlatformService\platformservice_output.log"
+$commandsServiceLog = Join-Path -Path $projectRoot -ChildPath "CommandsService\commandsservice_output.log"
+
+# Start PlatformService asynchronously with logging
+try {
+    Write-Host "Starting PlatformService..."
+    Start-ScriptAsync -ScriptPath $platformServiceScript `
+                      -WorkingDirectory (Join-Path -Path $projectRoot -ChildPath "PlatformService") `
+                      -EnvironmentVars $envVars `
+                      -LogFilePath $platformServiceLog
+}
+catch {
+    Write-Error "Failed to start PlatformService: $_"
+    exit 1
+}
+
+# Wait for Dapr sidecar to initialize (adjust as needed)
+Start-Sleep -Seconds 5
+
+# Start CommandsService asynchronously with logging
+try {
+    Write-Host "Starting CommandsService..."
+    Start-ScriptAsync -ScriptPath $commandsServiceScript `
+                      -WorkingDirectory (Join-Path -Path $projectRoot -ChildPath "CommandsService") `
+                      -EnvironmentVars $envVars `
+                      -LogFilePath $commandsServiceLog
+}
+catch {
+    Write-Error "Failed to start CommandsService: $_"
+    exit 1
+}
 
 Write-Host "Both PlatformService and CommandsService have been started."
 
@@ -77,30 +111,9 @@ Write-Host "Both PlatformService and CommandsService have been started."
 function Cleanup {
     Write-Host "`nInitiating cleanup..."
 
-    # Stop the child processes
-    if ($platformServiceProcess -and !$platformServiceProcess.HasExited) {
-        Write-Host "Stopping PlatformService..."
-        $platformServiceProcess.CloseMainWindow() | Out-Null
-        Start-Sleep -Seconds 5
-        if (!$platformServiceProcess.HasExited) {
-            Write-Host "Forcefully terminating PlatformService..."
-            $platformServiceProcess.Kill()
-        }
-    }
-
-    if ($commandsServiceProcess -and !$commandsServiceProcess.HasExited) {
-        Write-Host "Stopping CommandsService..."
-        $commandsServiceProcess.CloseMainWindow() | Out-Null
-        Start-Sleep -Seconds 5
-        if (!$commandsServiceProcess.HasExited) {
-            Write-Host "Forcefully terminating CommandsService..."
-            $commandsServiceProcess.Kill()
-        }
-    }
-
     # Stop Docker Compose services
     Write-Host "Stopping Docker Compose services..."
-    docker-compose -f $dockerComposeFile down
+    docker-compose -f docker-components.yaml down
 
     Write-Host "Cleanup complete."
 }
