@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  rabbitmq:
+    image: "rabbitmq:3.9-management"
+    container_name: "rabbitmq"
+    environment:
+      RABBITMQ_DEFAULT_USER: "user"
+      RABBITMQ_DEFAULT_PASS: "password"
+    ports:
+      - "5672:5672" # AMQP protocol
+      - "15672:15672" # RabbitMQ Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # mssql:
+  #   image: "mcr.microsoft.com/mssql/server:2019-latest"
+  #   container_name: "mssql"
+  #   environment:
+  #     SA_PASSWORD: "YourStrong!Passw0rd"
+  #     ACCEPT_EULA: "Y"
+  #   ports:
+  #     - "1433:1433"    # MSSQL Server
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -Q 'SELECT 1'"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 10
+
+volumes:
+  rabbitmq_data:
+  # mssql_data:

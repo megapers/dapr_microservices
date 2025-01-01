@@ -1,0 +1,29 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.sln.docstates
+
+# Visual Studio
+.vs/
+.vscode/
+*.code-workspace
+
+# Docker
+docker-compose.override.yaml
+docker-compose.local.yaml
+
+# Logs
+*.log
+
+# Environment Variables
+*.env
+
+# Secrets (Ensure sensitive files are excluded)
+secrets/
+*.secret.json
+
+# Other
+*.tmp
+*.bak

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: platforms-svc
+  namespace: les-microservice
+spec:
+  type: NodePort
+  selector:
+    app: platformservice
+  ports:
+    - port: 80
+      targetPort: 80
+      # NodePort must be in range 30000-32767
+      nodePort: 30080

@@ -1,0 +1,33 @@
+version: "3.8"
+services:
+  platformservice:
+    container_name: platformservice
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8070:8080"
+  # docker build -t megapers/platformservice .
+  # docker run -p 8070:8080 -d megapers/platformservice
+
+  # Dapr sidecar for platformservice
+  platformservice-dapr:
+    image: "daprio/daprd:latest"
+    container_name: "platformservice-dapr"
+    depends_on:
+      - platformservice
+    command: >
+      /daprd
+      --app-id platformservice
+      --app-port 8080
+      --app-channel-address platformservice
+      --dapr-http-port 3601
+      --dapr-grpc-port 60001
+      --resources-path /components
+
+    volumes:
+      - ./dapr/components:/components
+      - ./dapr/config:/dapr
+    ports:
+      - "3601:3601"
+      - "60001:60001"

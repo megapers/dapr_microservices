@@ -1,0 +1,99 @@
+version: "3.9"
+
+services:
+  ################################################
+  #  RABBITMQ Service (with enhanced healthcheck)
+  ################################################
+  rabbitmq:
+    image: "rabbitmq:3.9-management"
+    container_name: "rabbitmq"
+    environment:
+      RABBITMQ_DEFAULT_USER: "user"
+      RABBITMQ_DEFAULT_PASS: "password"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672" # AMQP
+      - "15672:15672" # RabbitMQ Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10 # Increased retries
+
+  ################################################
+  #  PLATFORM SERVICE (your .NET app)
+  ################################################
+  platformservice:
+    container_name: "platformservice"
+    build:
+      context: ./PlatformService
+      dockerfile: Dockerfile
+    ports:
+      - "8070:8080" # Host 8070 -> Container 8080
+
+  ################################################
+  #  PLATFORM SERVICE - DAPR SIDECAR
+  ################################################
+  platformservice-dapr:
+    image: "daprio/daprd:latest"
+    container_name: "platformservice-dapr"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      platformservice:
+        condition: service_started
+    command: >
+      /daprd
+      --app-id platformservice
+      --app-port 8080
+      --app-channel-address platformservice
+      --dapr-http-port 3601
+      --dapr-grpc-port 60001
+      --resources-path /components
+    ports:
+      - "3601:3601" # Dapr HTTP
+      - "60001:60001" # Dapr gRPC
+    volumes:
+      - ./dapr/components/docker:/components
+    restart: unless-stopped # Ensures Dapr sidecar restarts on failure
+
+  ################################################
+  #  COMMANDS SERVICE (your .NET app)
+  ################################################
+  commandsservice:
+    container_name: "commandsservice"
+    build:
+      context: ./CommandsService
+      dockerfile: Dockerfile
+    ports:
+      - "5230:8080" # Host 5230 -> Container 8080
+
+  ################################################
+  #  COMMANDS SERVICE - DAPR SIDECAR
+  ################################################
+  commandsservice-dapr:
+    image: "daprio/daprd:latest"
+    container_name: "commandsservice-dapr"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      commandsservice:
+        condition: service_started
+    command: >
+      /daprd
+      --app-id commandsservice
+      --app-port 8080
+      --app-channel-address commandsservice
+      --dapr-http-port 3602
+      --dapr-grpc-port 60002
+      --resources-path /components
+    ports:
+      - "3602:3602" # Dapr HTTP
+      - "60002:60002" # Dapr gRPC
+    volumes:
+      - ./dapr/components/docker:/components
+    restart: unless-stopped # Ensures Dapr sidecar restarts on failure
+
+volumes:
+  rabbitmq_data:

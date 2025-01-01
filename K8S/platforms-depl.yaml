@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platforms-depl
+  namespace: les-microservice
+  labels:
+    app: platforms-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: platformservice
+  template:
+    metadata:
+      labels:
+        app: platformservice
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "finecollectionservice"
+        dapr.io/app-port: "6001"
+        dapr.io/config: "dapr-config"
+    spec:
+      containers:
+        - name: platformservice
+          image: megapers/platformservice:latest
+          ports:
+            - containerPort: 6001

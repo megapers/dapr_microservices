@@ -1,0 +1,33 @@
+version: "3.8"
+services:
+  commandsservice:
+    container_name: commandsservice
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8060:8080"
+  # docker build -t megapers/commandsservice .
+  # docker run -p 8060:8080 -d megapers/commandsservice
+
+  # Dapr sidecar for commandsservice
+  commandsservice-dapr:
+    image: "daprio/daprd:latest"
+    container_name: "commandsservice-dapr"
+    depends_on:
+      - commandsservice
+    command: >
+      /daprd
+      --app-id commandsservice
+      --app-port 8080
+      --app-channel-address commandsservice
+      --dapr-http-port 3500
+      --dapr-grpc-port 50001
+      --resources-path /components
+
+    volumes:
+      - ./dapr/components:/components
+      - ./dapr/config:/dapr
+    ports:
+      - "3500:3500"
+      - "50001:50001"
