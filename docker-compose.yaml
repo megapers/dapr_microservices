@@ -32,7 +32,7 @@ services:
       context: ./PlatformService
       dockerfile: Dockerfile
     ports:
-      - "8070:8080" # Host 8070 -> Container 8080
+      - "5012:5012" # Host 5012 -> Container 5012
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -53,7 +53,7 @@ services:
     command: >
       /daprd
       --app-id platformservice
-      --app-port 8080
+      --app-port 5012
       --app-channel-address platformservice
       --dapr-http-port 3601
       --dapr-grpc-port 60001
@@ -72,14 +72,14 @@ services:
     container_name: "commandsservice"
     environment:
       DEPLOYMENT_MODE: "DOCKER"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
     build:
       context: ./CommandsService
       dockerfile: Dockerfile
     ports:
-      - "5230:8080" # Host 5230 -> Container 8080
+      - "5230:5230" # Host 5230 -> Container 5230
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   ################################################
   #  COMMANDS SERVICE - DAPR SIDECAR
@@ -97,7 +97,7 @@ services:
     command: >
       /daprd
       --app-id commandsservice
-      --app-port 8080
+      --app-port 5230
       --app-channel-address commandsservice
       --dapr-http-port 3602
       --dapr-grpc-port 60002
