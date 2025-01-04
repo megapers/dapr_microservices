@@ -1,34 +1,34 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: platformservice
+  name: commandsservice
   namespace: les-microservice
   labels:
-    app: platformservice
+    app: commandsservice
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: platformservice
+      app: commandsservice
   template:
     metadata:
       labels:
-        app: platformservice
+        app: commandsservice
       annotations:
         dapr.io/enabled: "true"
-        dapr.io/app-id: "platformservice"
-        dapr.io/app-port: "5012"
+        dapr.io/app-id: "commandsservice"
+        dapr.io/app-port: "5230"
         # dapr.io/config: "dapr-config"
     spec:
       containers:
-        - name: platformservice
-          image: megapers/platformservice:1.0
+        - name: commandsservice
+          image: megapers/commandsservice:1.0
           env:
             - name: ASPNETCORE_HTTP_PORTS
               value: ""
             - name: HTTP_PORTS
               value: ""
             - name: ASPNETCORE_URLS
-              value: "http://0.0.0.0:5012"
+              value: "http://0.0.0.0:5230"
           ports:
-            - containerPort: 5012
+            - containerPort: 5230
