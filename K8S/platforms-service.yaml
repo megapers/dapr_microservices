@@ -4,23 +4,19 @@ metadata:
   name: platforms-svc
   namespace: les-microservice
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: platformservice
   ports:
     - name: http
       port: 80
       targetPort: 5012
-      nodePort: 30080
       protocol: TCP
     - name: dapr-http
       port: 3500
       targetPort: 3500
-      nodePort: 30081
       protocol: TCP
     - name: dapr-grpc
       port: 50001
       targetPort: 50001
-      nodePort: 30082
       protocol: TCP
-  type: NodePort

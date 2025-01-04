@@ -4,23 +4,19 @@ metadata:
   name: commands-svc
   namespace: les-microservice
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: commandsservice
   ports:
     - name: http
       port: 80
       targetPort: 5230
-      nodePort: 30083
       protocol: TCP
     - name: dapr-http
       port: 3500
       targetPort: 3500
-      nodePort: 30084
       protocol: TCP
     - name: dapr-grpc
       port: 50001
       targetPort: 50001
-      nodePort: 30085
       protocol: TCP
-  type: NodePort
