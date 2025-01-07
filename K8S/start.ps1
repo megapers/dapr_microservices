@@ -1,4 +1,5 @@
 kubectl apply `
+    -f ingress-srv.yaml `
     -f rabbitmq.yaml `
     -f pubsub-rabbitmq.yaml `
     -f platforms-np-srv.yaml `
