@@ -5,6 +5,21 @@ using PlatformService.SyncDataServices.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Get the environment
+var env = builder.Environment;
+Console.WriteLine($"Current Environment: {env.EnvironmentName}");
+
+// Load configuration based on environment
+var configuration = builder.Configuration
+    .SetBasePath(env.ContentRootPath)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .Build();
+
+// Add this debug line to verify configuration loading
+Console.WriteLine($"CommandsService Endpoint: {configuration["CommandsService"]}");
+
 // Add services to the container.
 
 // Read the deployment mode from environment variables
@@ -40,8 +55,18 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseInMemoryDatabase("InMemDb"));
+if (env.IsProduction())
+{
+    Console.WriteLine("--> Using SqlServer Db");
+    builder.Services.AddDbContext<AppDbContext>(opt =>
+        opt.UseSqlServer(configuration.GetConnectionString("PlatformsConn")));
+}
+else
+{
+    Console.WriteLine("--> Using InMem Db");
+    builder.Services.AddDbContext<AppDbContext>(opt =>
+        opt.UseInMemoryDatabase("InMemDb"));
+}
 
 builder.Services.AddScoped<IPlatformRepo, PlatformRepo>();
 
@@ -61,6 +86,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-await PrepDb.PrepPopulation(app);
+await PrepDb.PrepPopulation(app, env.IsProduction());
 
 app.Run();

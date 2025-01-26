@@ -1,0 +1,21 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: statestore
+  namespace: les-microservice
+spec:
+  type: state.sqlserver
+  version: v1
+  metadata:
+    - name: connectionString
+      secretKeyRef:
+        name: mssql-conn # The name of the K8s Secret
+        key: ConnectionString # The key inside that Secret
+    - name: tableName
+      value: "StateTable"
+    - name: useManagedIdentity
+      value: "false"
+auth:
+  secretStore: kubernetes
+# DB credentials stored in Kubernetes
+# kubectl create secret generic mssql-conn --from-literal=ConnectionString="Server=mssql-clusterip-srv,1433;Database=YourDatabase;User Id=sa;Password=pa55w0rd!"

@@ -22,13 +22,18 @@ spec:
     spec:
       containers:
         - name: platformservice
-          image: megapers/platformservice:1.0
+          image: megapers/platformservice:latest
           env:
             - name: ASPNETCORE_HTTP_PORTS
-              value: ""
+              value: "5012"
             - name: HTTP_PORTS
-              value: ""
+              value: "5012"
             - name: ASPNETCORE_URLS
               value: "http://0.0.0.0:5012"
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: mssql-conn
+                  key: ConnectionString
           ports:
             - containerPort: 5012
