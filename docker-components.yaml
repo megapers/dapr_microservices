@@ -16,20 +16,25 @@ services:
       timeout: 5s
       retries: 10
 
-  # mssql:
-  #   image: "mcr.microsoft.com/mssql/server:2019-latest"
-  #   container_name: "mssql"
-  #   environment:
-  #     SA_PASSWORD: "YourStrong!Passw0rd"
-  #     ACCEPT_EULA: "Y"
-  #   ports:
-  #     - "1433:1433"    # MSSQL Server
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -Q 'SELECT 1'"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 10
+  mssql:
+    image: "mcr.microsoft.com/mssql/server:2019-latest"
+    container_name: "mssql"
+    environment:
+      SA_PASSWORD: "YourStrong!Passw0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - "/mnt/data:/var/opt/mssql/data"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong!Passw0rd' -Q 'SELECT 1'",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
 
 volumes:
   rabbitmq_data:
-  # mssql_data:
