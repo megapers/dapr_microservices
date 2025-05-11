@@ -1,4 +1,20 @@
+using CommandService.Data;
+using CommandsService.Data;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Get the environment
+var env = builder.Environment;
+Console.WriteLine($"Current Environment: {env.EnvironmentName}");
+
+// Load configuration based on environment
+var configuration = builder.Configuration
+    .SetBasePath(env.ContentRootPath)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .Build();
 
 // Add services to the container.
 
@@ -27,6 +43,10 @@ builder.Services.AddDaprClient(builder =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+builder.Services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("InMemDb"));
+builder.Services.AddScoped<ICommandRepo, CommandRepo>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
